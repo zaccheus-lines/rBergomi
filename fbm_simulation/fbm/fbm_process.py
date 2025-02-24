@@ -1,5 +1,5 @@
-from cholesky_fbm import CholeskyFBM
-from davies_harte_fbm import DaviesHarteFBM
+from .cholesky_fbm import CholeskyFBM
+from .davies_harte_fbm import DaviesHarteFBM
 
 class FBMProcess:
     """Manages fBM simulation using different methods."""
@@ -9,10 +9,10 @@ class FBMProcess:
         
         if self.method_name == "cholesky":
             self.simulator = CholeskyFBM(n, T, H)
-        elif self.method_name == "davies_hart":
+        elif self.method_name == "davies_harte":
             self.simulator = DaviesHarteFBM(n, T, H)
         else:
             raise ValueError(f"Unknown method: {method}")
 
-    def generate_paths(self, num_samples=1):
-        return self.simulator.generate_fBM(num_samples)
+    def generate_paths(self):
+        return self.simulator.generate_fBM()

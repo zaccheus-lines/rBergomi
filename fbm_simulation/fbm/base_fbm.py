@@ -10,6 +10,7 @@ class FBMSimulator(ABC):
         self.T = T  # Total time
         self.H = H  # Hurst parameter
         self.dt = T / n  # Step size
+        self.s = int(self.n * self.T)  # Total steps
         self.t = np.linspace(0, T, n)  # Time grid
 
     @abstractmethod

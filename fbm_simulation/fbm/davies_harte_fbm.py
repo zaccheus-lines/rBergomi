@@ -1,4 +1,4 @@
-from base_fbm import FBMSimulator
+from .base_fbm import FBMSimulator
 import numpy as np
 
 class DaviesHarteFBM(FBMSimulator):
@@ -7,7 +7,7 @@ class DaviesHarteFBM(FBMSimulator):
     def __init__(self, n=100, T=1.0, H=0.4):
         super().__init__(n, T, H)
 
-    def davies_harte_path(self):
+    def generate_fBM(self):
         """
         Generates a single fractional Brownian motion path using the Davies–Harte method.
         The method returns an array of length n+1 with the first element fixed at 0.
@@ -54,4 +54,4 @@ class DaviesHarteFBM(FBMSimulator):
         fGn = Z[:N]
         fBm = np.cumsum(fGn).real * (N ** (-H)) * (T ** H)
         # Prepend the initial zero to the fBM path.
-        return np.concatenate(([0], fBm))
+        return fBm

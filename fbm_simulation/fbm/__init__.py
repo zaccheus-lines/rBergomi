@@ -2,4 +2,4 @@
 from .fbm_process import FBMProcess
 from .cholesky_fbm import CholeskyFBM
 from .davies_harte_fbm import DaviesHarteFBM
-from fbm_process import FBMProcess
+from .fbm_process import FBMProcess

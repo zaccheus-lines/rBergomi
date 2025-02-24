@@ -1,4 +1,4 @@
-from base_fbm import FBMSimulator
+from .base_fbm import FBMSimulator
 import numpy as np
 
 class CholeskyFBM(FBMSimulator):
@@ -37,7 +37,7 @@ class CholeskyFBM(FBMSimulator):
 
         return Sigma
 
-    def fBM_sim(self, num_samples=1):
+    def generate_fBM(self, num_samples=1):
 
         # Generate independent standard normal variables v ~ N(0, I)
         v = np.random.randn(self.s, num_samples)
