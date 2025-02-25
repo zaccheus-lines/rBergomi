@@ -45,4 +45,5 @@ class CholeskyFBM(FBMSimulator):
         # Transform v into correlated samples: u = Σ v
         u = self.cholesky_matrix @ v
         #print(u.shape)
+        u = np.insert(u, 0, 0.0)
         return u

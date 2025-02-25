@@ -19,7 +19,7 @@ eta = 1.9      # Volatility of variance process
 
 # ✅ Generate fractional Brownian motion using HybridFBM
 # Generate multiple fBM paths explicitly for Monte Carlo simulation
-fbm_simulator = FBMProcess(method = "hybrid", n=n, T=T, H=H, m = m)
+fbm_simulator = FBMProcess(method = "cholesky", n=n, T=T, H=H, m = m)
 
 # ✅ Initialize rBergomi model
 rB = rBergomi(fbm_simulator, n=n, m=m, T=T, a=a)
@@ -33,11 +33,11 @@ dB = rB.dB()
 
 S = rB.S(V,dB)
 
-'''plt.figure(figsize=(10,6))
+plt.figure(figsize=(10,6))
 for s in S:
     plt.plot(s)
 plt.xlabel("Time Step")
 plt.ylabel("Price Process")
 plt.title("Simulated Price Paths from rBergomi Model")
 plt.grid(True)
-plt.show()'''
+plt.show()

@@ -12,7 +12,7 @@ class FBMSimulator(ABC):
         self.H = H  # Hurst parameter
         self.dt = T / n  # Step size
         self.s = int(self.n * self.T)  # Total steps
-        self.t = np.linspace(0, self.T, self.s) # Time grid
+        self.t = np.linspace(0, self.T, self.s+1) # Time grid
         self.m = m
         self.a = H - 0.5  # Roughness parameter
         self.e = np.array([0, 0])
