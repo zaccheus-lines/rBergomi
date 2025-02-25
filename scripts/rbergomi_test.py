@@ -11,9 +11,9 @@ vec_bsinv = np.vectorize(bsinv)
 n = 100     # Steps per year
 m = 30    # Number of paths (Large for accuracy)
 T = 1.0       # Maturity
-H = 0.1      # Hurst parameter
+H = 0.4      # Hurst parameter
 a = H - 0.5   # Alpha parameter
-rho = -1    # Correlation between price and variance process
+rho = -0.9    # Correlation between price and variance process
 xi = 0.235**2  # Initial variance level
 eta = 1.9      # Volatility of variance process
 
@@ -32,6 +32,14 @@ V = rB.V()
 dB = rB.dB()
 
 S = rB.S(V,dB)
+
+r= 0
+K_values = np.linspace(0.5, 1.5, 20)  # Strike range from 0.5 to 1.5
+ST = S[:, -1]  # Last column of S (final prices at maturity)
+call_prices = [np.mean(np.maximum(ST - K, 0)) * np.exp(-r * T) for K in K_values]
+plt.figure(figsize=(10,6))
+plt.plot(K_values, call_prices, marker='o', linestyle='-')
+plt.show()
 
 plt.figure(figsize=(10,6))
 for s in S:
