@@ -1,6 +1,6 @@
 from .base_fbm import FBMSimulator
 import numpy as np
-from .utils import *
+from ..utils.utils import *
 
 class HybridFBM(FBMSimulator):
     """
@@ -8,13 +8,7 @@ class HybridFBM(FBMSimulator):
     """
 
     def __init__(self, n=100, T=1.0, H=0.1):
-        super().__init__(n, T, H)
-        self.a = H - 0.5  # Roughness parameter
-
-        # Construct hybrid scheme correlation structure for kappa = 1
-        self.e = np.array([0, 0])
-        self.c = cov(self.a, self.n)
-    
+        super().__init__(n, T, H)    
         self.t = np.linspace(0, self.T, 1 + self.s) # Time grid
 
     def dW1(self):

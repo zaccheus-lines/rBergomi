@@ -7,7 +7,7 @@ class CholeskyFBM(FBMSimulator):
     def __init__(self, n=100, T=1.0, H=0.4):
         super().__init__(n, T, H)
         self.Gamma = self.calc_Gamma()
-        self.cholesky_matrix = np.linalg.cholesky(self.Gamma)
+        self.cholesky_matrix = self.cholesky_banachiewicz(self.Gamma)
 
     def calc_Gamma(self):
         """Constructs covariance matrix for fBM using the Hurst exponent."""
@@ -37,12 +37,12 @@ class CholeskyFBM(FBMSimulator):
 
         return Sigma
 
-    def generate_fBM(self, num_samples=1):
+    def generate_fBM(self):
 
         # Generate independent standard normal variables v ~ N(0, I)
-        v = np.random.randn(self.s, num_samples)
+        v = np.random.randn(self.s, self.m)
 
         # Transform v into correlated samples: u = Σ v
         u = self.cholesky_matrix @ v
-
+        #print(u.shape)
         return u

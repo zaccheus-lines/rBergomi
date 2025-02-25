@@ -1,5 +1,6 @@
 import numpy as np
 from abc import ABC, abstractmethod
+from ..utils.utils import *
 
 class FBMSimulator(ABC):
     """
@@ -11,8 +12,11 @@ class FBMSimulator(ABC):
         self.H = H  # Hurst parameter
         self.dt = T / n  # Step size
         self.s = int(self.n * self.T)  # Total steps
-        self.t = np.linspace(0, T, n)  # Time grid
+        self.t = np.linspace(0, self.T, self.s) # Time grid
         self.m = m
+        self.a = H - 0.5  # Roughness parameter
+        self.e = np.array([0, 0])
+        self.c = cov(self.a, self.n)
         
 
     @abstractmethod

@@ -1,12 +1,13 @@
 from setuptools import setup, find_packages
 
 setup(
-    name="fbm",  # Name of the package
+    name="rbergomi",  # Name of the package
     version="0.1",
     packages=find_packages(),  # Automatically find all packages
     install_requires=[
         "numpy",
-        "matplotlib"
+        "matplotlib",
+        "scipy"
     ],
     author="Zacch Lines",
     description="Simulation of fractional Brownian motion using different methods.",
@@ -17,3 +18,5 @@ setup(
     ],
     python_requires='>=3.6',
 )
+
+from setuptools import setup, find_packages
