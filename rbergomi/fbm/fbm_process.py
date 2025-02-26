@@ -10,10 +10,13 @@ class FBMProcess:
         
         if self.method_name == "cholesky":
             self.simulator = CholeskyFBM(n, T, H)
+        
         elif self.method_name == "davies_harte":
             self.simulator = DaviesHarteFBM(n, T, H)
+
         elif self.method_name == "hybrid":
             self.simulator = HybridFBM(n, T, H)
+            
         else:
             raise ValueError(f"Unknown method: {method}")
 

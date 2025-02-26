@@ -22,14 +22,13 @@ class CholeskyFBM(FBMSimulator):
         return Gamma
     
     def cholesky_banachiewicz(self, Gamma):
-
+        """Performs covariance decomposition."""
         n = Gamma.shape[0]
         Sigma = np.zeros_like(Gamma)
 
         for i in range(n):
             for j in range(i + 1):
                 sum_val = sum(Sigma[i][k] * Sigma[j][k] for k in range(j))
-
                 if i == j:
                     Sigma[i][j] = np.sqrt(Gamma[i][i] - sum_val)
                 else:
@@ -39,11 +38,7 @@ class CholeskyFBM(FBMSimulator):
 
     def generate_fBM(self):
 
-        # Generate independent standard normal variables v ~ N(0, I)
-        v = np.random.randn(self.s, self.m)
-
-        # Transform v into correlated samples: u = Σ v
+        v = np.random.randn(self.s, self.m) # standard normal sampling
         u = self.cholesky_matrix @ v
-        #print(u.shape)
         u = np.insert(u, 0, 0.0)
         return u
