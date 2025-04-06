@@ -1,0 +1,59 @@
+# Ignore Python compiled files
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Ignore egg-info and build artifacts
+*.egg-info/
+*.egg
+build/
+dist/
+
+# Ignore virtual environments
+venv/
+env/
+.virtualenv/
+
+# Ignore IDE files
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
+
+# Ignore Jupyter Notebook checkpoints (if using Jupyter)
+.ipynb_checkpoints/
+
+# Ignore logs and local environment files
+*.log
+*.out
+*.err
+*.DS_Store  # macOS system files
+Thumbs.db  # Windows system files
+
+# Ignore package-lock and dependencies (if using pipenv or poetry)
+Pipfile.lock
+poetry.lock
+
+# Ignore TensorFlow checkpoints and training artifacts
+checkpoint
+*.ckpt
+*.ckpt.*
+*.pb
+*.pbtxt
+*.meta
+*.index
+*.data-*
+*.tflite
+*.saved_model*
+
+# Ignore TensorBoard logs
+logs/
+events.out.tfevents.*
+
+# Ignore Keras model files
+*.h5
+*.keras
+
+# Ignore temporary model files
+__saved_models__/
