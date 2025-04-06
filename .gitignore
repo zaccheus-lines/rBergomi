@@ -29,7 +29,9 @@ env/
 *.out
 *.err
 *.DS_Store  # macOS system files
+.DS_Store  # macOS system files
 Thumbs.db  # Windows system files
+
 
 # Ignore package-lock and dependencies (if using pipenv or poetry)
 Pipfile.lock
