@@ -1,55 +1,51 @@
+import os
+import datetime
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
 import tensorflow as tf
-from tensorflow.keras.layers import Input, Dense, GRU, BatchNormalization, Dropout
+from tensorflow.keras.layers import Input, Dense, GRU, Dropout
 from tensorflow.keras.models import Model
-from tensorflow.keras.regularizers import l2
 from tensorflow.keras.optimizers import Adam
-from tensorflow.keras import initializers
 from sklearn.model_selection import train_test_split
-import os, datetime
+
 
 class DeepHedgerTF:
-    def __init__(self, model, S0=100, K_strike=100, M=10**5, N=100, T=30, r=0, CALL=1):
-        # Set parameters
+    def __init__(self, model, S0=100, K_strike=100, M=10**5, N=100, T=30, r=0.0, CALL=True):
+        """
+        Initialize Deep Hedging framework with a stochastic model.
+        """
         self.model = model
         self.S0 = S0
         self.K_strike = K_strike
         self.M = M
-        self.N = N       # Number of discrete time steps
-        self.T = T   # Total time horizon (e.g., 30 days)
+        self.N = N
+        self.T = T
         self.dt = T / N
         self.r = r
         self.rf = np.exp(r * self.dt)
         self.CALL = CALL
-        
-        # Set random seed for reproducibility
+
+        # Set random seed
         np.random.seed(2021)
         tf.random.set_seed(2021)
-        
-        # Simulation: create a Rough Bergomi model instance and simulate paths.
-        # Note: Here, we pass T as T and use N as the number of steps.
 
-        self.Sts, self.V = self.model.simulate_paths(n_paths=self.M, n_steps=self.N, T=self.T, S0=self.S0)
-        self.price = self.model.price_european(self.Sts, self.K_strike, self.T, self.r)
-        
-        # Store simulation paths for later use.
-        self.Sts2 = self.Sts.copy()
-        
-        # Create time grid based on simulation output dimensions (should be N+1 points)
+        # Simulate asset paths and compute option price
+        self.S, self.V = self.model.simulate_paths(n_paths=self.M, n_steps=self.N, T=self.T, S0=self.S0)
+        self.price = self.model.price_european(self.S, self.K_strike, self.T, self.r)
         self.t = np.linspace(0, self.N, self.V.shape[1])
-        
+
     def plot_paths(self):
-        plt.figure(figsize=(15,10))
-        plt.subplot(2,1,1)
-        plt.plot(self.t, self.Sts.T, alpha=0.1, color='blue')
+        plt.figure(figsize=(15, 10))
+        plt.subplot(2, 1, 1)
+        plt.plot(self.t, self.S.T, alpha=0.1, color='blue')
         plt.title('Underlying Price Paths')
         plt.xlabel('Time')
         plt.ylabel('Price')
         plt.grid(True)
-        plt.subplot(2,1,2)
+
+        plt.subplot(2, 1, 2)
         plt.plot(self.t, self.V.T, alpha=0.1, color='blue')
         plt.title('Variance Process Paths')
         plt.xlabel('Time')
@@ -57,117 +53,145 @@ class DeepHedgerTF:
         plt.grid(True)
         plt.tight_layout()
         plt.show()
-        
+
     def prepare_data(self):
-        # True sample paths for evaluation using log-moneyness
-        X_true = np.log(self.Sts2[:, :-1] / self.K_strike)  # shape: (M, N)
-        X_true = X_true.reshape((-1, self.N, 1))
-        y_true = self.Sts.reshape((-1, self.N + 1, 1))
+        X_true = np.log(self.S[:, :-1] / self.K_strike).reshape((-1, self.N, 1))
+        y_true = self.S.reshape((-1, self.N + 1, 1))
         self.X_true = X_true
         self.y_true = y_true
 
-        # Generate additional training data (using the same simulation paths in this example)
-        X = np.log(self.Sts2 / self.K_strike)        # shape: (M, N+1)
-        n_feats = 1
-        X2 = X[:, :-1].reshape((-1, self.N, n_feats))
-        y2 = self.Sts2.reshape((-1, self.N + 1, n_feats))
+        X = np.log(self.S / self.K_strike)
+        self.n_feats = 1
+        X2 = X[:, :-1].reshape((-1, self.N, self.n_feats))
+        y2 = self.S.reshape((-1, self.N + 1, self.n_feats))
         self.X_train, self.X_val, self.y_train, self.y_val = train_test_split(X2, y2, test_size=0.2, random_state=42)
-        
-    def deep_hedger(self, T_seq, n_feats):
-        input_layer = Input(shape=(None, n_feats))
-        
-        # 1st GRU layer
-        x = GRU(64, activation='tanh',
-                return_sequences=True,
-                kernel_initializer=initializers.RandomNormal(0, 0.1),
-                bias_initializer=initializers.RandomNormal(0, 0.1))(input_layer)
-        
-        # Optional Dropout or BatchNorm
-        x = Dropout(0.2)(x)
-        
-        # 2nd GRU layer
-        x = GRU(32, activation='tanh',
-                return_sequences=True,
-                kernel_initializer=initializers.RandomNormal(0, 0.1),
-                bias_initializer=initializers.RandomNormal(0, 0.1))(x)
 
-        # Optional Dense layer(s)
-        x = Dense(16, activation='relu')(x)
-        x = Dropout(0.1)(x)
+    def deep_hedger(self, T_seq, n_feats, gru_layers=2, hidden_size=64):
+        inputs = Input(shape=(None, n_feats))
+        x = inputs
 
-        # Output layer (delta hedge at each timestep)
-        output_layer = Dense(1, activation='linear',
-                            kernel_initializer=initializers.RandomNormal(),
-                            bias_initializer=initializers.RandomNormal(0, 0.1))(x)
-        
-        model = Model(input_layer, output_layer)
-        return model
-    
-    def MSHE_Loss(self, init_price, strike, T_seq):
-        def lossFunction(y_true, y_pred):
-            # For simplicity, ignore rf (assume rf=1)
-            price_changes = tf.experimental.numpy.diff(y_true, n=1, axis=1)
-            val = tf.reduce_sum(tf.math.multiply(price_changes, y_pred), axis=1)
-            option_val = tf.math.maximum(y_true[:, -1] - strike, 0)
-            return tf.math.reduce_mean(tf.math.square(-option_val + val + init_price))
-        return lossFunction
-    
-    def cvarLoss(self, init_price, strike, T_seq, batch_size, proportion=0.01):
+        for _ in range(gru_layers):
+            x = GRU(hidden_size, activation='tanh', return_sequences=True)(x)
+            x = Dropout(0.2)(x)
+
+        x = Dense(hidden_size // 2, activation='relu')(x)
+        outputs = Dense(1, activation='linear')(x)
+        return Model(inputs, outputs)
+
+    def MSHE_Loss(self, init_price, strike):
+        def loss_fn(y_true, y_pred):
+            price_changes = tf.experimental.numpy.diff(y_true, axis=1)
+            hedge_value = tf.reduce_sum(price_changes * y_pred, axis=1)
+            option_value = tf.maximum(y_true[:, -1] - strike, 0)
+            return tf.reduce_mean(tf.square(-option_value + hedge_value + init_price))
+        return loss_fn
+
+    def cvarLoss(self, init_price, strike, batch_size, proportion=0.01):
         num = int(batch_size * proportion)
-        def lossFunction(y_true, y_pred):
-            price_changes = tf.experimental.numpy.diff(y_true, n=1, axis=1)
-            val = tf.reduce_sum(tf.math.multiply(price_changes, y_pred), axis=1)
-            option_val = tf.math.maximum(y_true[:,-1,:] - strike, 0)
-            error = tf.reshape(-(-option_val + val + init_price), [-1])
-            CVaR, idx = tf.math.top_k(error, tf.constant(num, dtype=tf.int32))
-            return tf.math.reduce_mean(CVaR)
-        return lossFunction
-    
-    def build_and_compile_model(self, lr=0.005, loss_type='mshe'):
-        self.n_feats = 1  # Using only log-moneyness
-        # Build model with sequence length = N (i.e., T_seq = self.N)
-        self.model = self.deep_hedger(self.N, self.n_feats)
-        self.model.summary()
-        print("Check Model", self.model.predict(np.zeros((1, self.N, 1))).reshape(-1))
-        if loss_type == 'mshe':
-            loss_func = self.MSHE_Loss(init_price=self.price, strike=self.K_strike, T_seq=self.N)
-        else:
-            # Uncomment below to use CVaR loss instead
-            loss_func = self.cvarLoss(init_price=self.price, strike=self.K_strike, T_seq=self.N, batch_size=256, proportion=0.01)
-            #loss_func = self.MSHE_Loss(init_price=self.price, strike=self.K_strike, T_seq=self.N)
-        self.model.compile(optimizer=Adam(learning_rate=lr), loss=loss_func)
-        
-    def train_model(self, BATCH_SIZE=256, EPOCHS=50):
+
+        def loss_fn(y_true, y_pred):
+            price_changes = tf.experimental.numpy.diff(y_true, axis=1)
+            hedge_value = tf.reduce_sum(price_changes * y_pred, axis=1)
+            option_value = tf.maximum(y_true[:, -1, 0] - strike, 0)
+            error = -(-option_value + hedge_value + init_price)
+            cvar, _ = tf.math.top_k(error, num)
+            return tf.reduce_mean(cvar)
+
+        return loss_fn
+
+    def entropicLoss(self, init_price, strike, gamma=1.0):
+        def loss_fn(y_true, y_pred):
+            price_changes = tf.experimental.numpy.diff(y_true, axis=1)
+            hedge_value = tf.reduce_sum(price_changes * y_pred, axis=1)
+            option_value = tf.maximum(y_true[:, -1] - strike, 0)
+            pnl = -option_value + hedge_value + init_price
+            max_pnl = tf.reduce_max(-gamma * pnl)
+            stabilized = tf.exp(-gamma * pnl - max_pnl)
+            mean_stabilized = tf.reduce_mean(stabilized)
+            return (1.0 / gamma) * (tf.math.log(mean_stabilized) + max_pnl)
+        return loss_fn
+
+    def build_and_compile_model(self, lr=0.005, loss_type='cvar', gru_layers=2, hidden_size=64, optimizer='adam', gamma=1.0):
+        self.model = self.deep_hedger(self.N, self.n_feats, gru_layers, hidden_size)
+
+        optimizers = {
+            'adam': Adam(learning_rate=lr),
+            'rmsprop': tf.keras.optimizers.RMSprop(learning_rate=lr),
+            'sgd': tf.keras.optimizers.SGD(learning_rate=lr, momentum=0.9)
+        }
+        opt = optimizers.get(optimizer)
+        if opt is None:
+            raise ValueError(f"Unsupported optimizer: {optimizer}")
+
+        loss_funcs = {
+            'cvar': self.cvarLoss(self.price, self.K_strike, batch_size=256),
+            'mshe': self.MSHE_Loss(self.price, self.K_strike),
+            'entropic': self.entropicLoss(self.price, self.K_strike, gamma=gamma)
+        }
+        loss_func = loss_funcs.get(loss_type)
+        if loss_func is None:
+            raise ValueError(f"Unsupported loss type: {loss_type}")
+
+        self.model.compile(optimizer=opt, loss=loss_func)
+
+    def train_model(self, batch_size=256, epochs=50):
         logdir = os.path.join("logs", datetime.datetime.now().strftime("%Y%m%d-%H%M%S"))
-        tensorboard_callback = tf.keras.callbacks.TensorBoard(logdir, histogram_freq=1)
-        early_stopping_callback = tf.keras.callbacks.EarlyStopping(monitor='val_loss', patience=10)
-        self.model.fit(self.X_train, self.y_train, epochs=EPOCHS, verbose=1, 
-                       batch_size=BATCH_SIZE, callbacks=[tensorboard_callback, early_stopping_callback],
-                       validation_data=(self.X_val, self.y_val), shuffle=False)
-        
+        callbacks = [
+            tf.keras.callbacks.TensorBoard(logdir, histogram_freq=1),
+            tf.keras.callbacks.EarlyStopping(monitor='val_loss', patience=10)
+        ]
+        self.model.fit(
+            self.X_train, self.y_train,
+            epochs=epochs,
+            batch_size=batch_size,
+            validation_data=(self.X_val, self.y_val),
+            callbacks=callbacks,
+            shuffle=False,
+            verbose=0
+        )
+
+    def predict(self, X_input):
+        if not hasattr(self, 'model'):
+            raise ValueError("Model not built. Please call `build_and_compile_model()` first.")
+        return self.model.predict(X_input)
+
     def evaluate_model(self):
-        # Pre-calculate deep hedge deltas on the true sample paths (X_true)
-        N_SAMPLES = self.X_true.shape[0]
-        deep_hedge_deltas = np.zeros((N_SAMPLES, self.N))
+        n_samples = self.X_true.shape[0]
+        deltas = np.zeros((n_samples, self.N))
+
         for i in range(self.N):
-            temp = self.model.predict(self.X_true[:, :i+1, :], batch_size=512)
-            deep_hedge_deltas[:, i] = temp.reshape(-1, i+1)[:, i]
-        
-        # Calculate portfolio evolution
-        deep_vals = np.zeros((N_SAMPLES, self.N + 1))
-        deep_vals[:, 0] = self.price
+            pred = self.model.predict(self.X_true[:, :i+1, :], batch_size=512, verbose=0)
+            deltas[:, i] = pred[:, -1, 0]
+
+        vals = np.zeros((n_samples, self.N + 1))
+        vals[:, 0] = self.price
+
         for t in range(1, self.N + 1):
-            deep_vals[:, t] = self.rf * deep_vals[:, t - 1] + deep_hedge_deltas[:, t - 1] * (self.Sts[:, t] - self.rf * self.Sts[:, t - 1])
-        
-        deep_terminal_error = deep_vals[:, self.N] - np.maximum(self.Sts[:, self.N] - self.K_strike, 0)
-        print("Mean hedging error:", np.mean(deep_terminal_error))
-        print("Std of hedging error:", np.std(deep_terminal_error))
-        self.deep_terminal_error = deep_terminal_error
-        return deep_terminal_error
-    
+            dS = self.S[:, t] - self.rf * self.S[:, t - 1]
+            vals[:, t] = self.rf * vals[:, t - 1] + deltas[:, t - 1] * dS
+
+        err = vals[:, -1] - np.maximum(self.S[:, -1] - self.K_strike, 0)
+        print("Mean hedging error:", np.mean(err))
+        print("Std of hedging error:", np.std(err))
+        self.deep_terminal_error = err
+        return err
+
     def plot_error(self):
-        plt.figure(figsize=(6,5))
-        sns.histplot(self.deep_terminal_error).set_title("Deep-Hedger Error")
-        plt.xlabel("Hedging Error")
-        plt.ylabel("Frequency")
-        plt.show()
+        if hasattr(self, 'deep_terminal_error'):
+            plt.figure(figsize=(6, 5))
+            sns.histplot(self.deep_terminal_error, bins=50)
+            plt.title("Deep-Hedger Hedging Error")
+            plt.xlabel("Hedging Error")
+            plt.ylabel("Frequency")
+            plt.grid(True)
+            plt.show()
+
+    def plot_pnl(self):
+        if hasattr(self, 'deep_terminal_pnl'):
+            plt.figure(figsize=(6, 5))
+            sns.histplot(self.deep_terminal_pnl, bins=50)
+            plt.title("Deep-Hedger PnL")
+            plt.xlabel("PnL")
+            plt.ylabel("Frequency")
+            plt.grid(True)
+            plt.show()

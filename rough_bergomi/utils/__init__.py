@@ -9,3 +9,7 @@ from .utils import (
     bs,
     bsinv
 )
+
+from .plotting import (
+    plot_paths
+)

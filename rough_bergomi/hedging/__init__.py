@@ -2,4 +2,4 @@
 Hedging strategies package.
 """
 
-from .deep_hedger import DeepHedger
+from .deep_hedger import DeepHedgerTF
