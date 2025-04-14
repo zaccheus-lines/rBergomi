@@ -17,7 +17,7 @@ class HybridFBM(FBMSimulator):
         covariance structure.
         """
         rng = np.random.multivariate_normal
-        return rng(self.e, self.c, (self.m, self.s))  # ✅ Ensure correct shape
+        return rng(self.e, self.c, (self.m, self.s))  # Ensure correct shape
     
     def Y(self, dW):
         """
@@ -31,7 +31,6 @@ class HybridFBM(FBMSimulator):
         for i in np.arange(1, 1 + self.s, 1):
             Y1[:,i] = dW[:,i-1,1] # Assumes kappa = 1
 
-        # Construct arrays for convolution
         G = np.zeros(1 + self.s) # Gamma
         for k in np.arange(2, 1 + self.s, 1):
             G[k] = g(b(k, self.a)/self.n, self.a)
@@ -41,15 +40,9 @@ class HybridFBM(FBMSimulator):
         # Initialise convolution result, GX
         GX = np.zeros((self.m, len(X[0,:]) + len(G) - 1))
 
-        # Compute convolution, FFT not used for small n
-        # Possible to compute for all paths in C-layer?
         for i in range(self.m):
             GX[i,:] = np.convolve(G, X[i,:])
-
-        # Extract appropriate part of convolution
         Y2 = GX[:,:1 + self.s]
-
-        # Finally contruct and return full process
         Y = np.sqrt(2 * self.a + 1) * (Y1 + Y2)
         return Y
 
