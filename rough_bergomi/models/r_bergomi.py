@@ -42,7 +42,8 @@ class RoughBergomiModel(BaseModel):
         self.n = n
         # Initialize the fBM simulator with the specified method
         self.fbm_simulator = FBMProcess(method=fbm_method, n=n, H=H)
-        
+
+       
     def simulate_paths(self, n_paths: int, n_steps: int, T: float, S0: float = 1.0) -> Tuple[np.ndarray, np.ndarray]:
         """
         Simulate paths of the Rough Bergomi model.
@@ -68,17 +69,17 @@ class RoughBergomiModel(BaseModel):
         variance_paths[:, 0] = self.xi
         price_paths[:, 0] = S0
         
-        # Generate standard Brownian motion for price process
-        dW1 = np.random.normal(0, np.sqrt(dt), (n_paths, n_steps))
         
         # Generate fBM paths for each simulation
         for i in range(n_paths):
             # Generate fBM for this path
-            fbm_path = self.fbm_simulator.generate_fBM()
-            
+            fbm_path, dW1 = self.fbm_simulator.generate_fBM()
+
             # Calculate correlated Brownian motion for variance
-            dW2 = self.rho * dW1[i] + np.sqrt(1 - self.rho**2) * np.random.normal(0, np.sqrt(dt), n_steps)
+            dW2= np.random.normal(0, np.sqrt(dt), (n_paths, n_steps))
             
+            dB = self.rho * dW1[:,:,0] + np.sqrt(1 - self.rho**2) * dW2
+
             # Update variance process
             for j in range(n_steps):
                 variance_paths[i, j+1] = self.xi * np.exp(
@@ -90,7 +91,7 @@ class RoughBergomiModel(BaseModel):
             for j in range(n_steps):
                 price_paths[i, j+1] = price_paths[i, j] * np.exp(
                     -0.5 * variance_paths[i, j] * dt + 
-                    np.sqrt(variance_paths[i, j]) * dW1[i, j]
+                    np.sqrt(variance_paths[i, j]) * dB[i, j]
                 )
         
         return price_paths, variance_paths

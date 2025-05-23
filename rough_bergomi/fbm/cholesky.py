@@ -41,4 +41,4 @@ class CholeskyFBM(FBMSimulator):
         v = np.random.randn(self.s, self.m) # standard normal sampling
         u = self.cholesky_matrix @ v
         u = np.insert(u, 0, 0.0)
-        return u
+        return u, v

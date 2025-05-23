@@ -86,14 +86,14 @@ class DeepHedgerTF:
             return tf.reduce_mean(tf.square(-option_value + hedge_value + init_price))
         return loss_fn
 
-    def cvarLoss(self, init_price, strike, batch_size, proportion=0.01):
+    def cvarLoss(self, init_price, strike, batch_size, proportion=0.05):
         num = int(batch_size * proportion)
 
         def loss_fn(y_true, y_pred):
             price_changes = tf.experimental.numpy.diff(y_true, axis=1)
             hedge_value = tf.reduce_sum(price_changes * y_pred, axis=1)
-            option_value = tf.maximum(y_true[:, -1, 0] - strike, 0)
-            error = -(-option_value + hedge_value + init_price)
+            option_value = tf.maximum(y_true[:, -1, ] - strike, 0)
+            error = tf.reshape(-(-option_value + hedge_value + init_price), [-1])
             cvar, _ = tf.math.top_k(error, num)
             return tf.reduce_mean(cvar)
 
@@ -111,7 +111,7 @@ class DeepHedgerTF:
             return (1.0 / gamma) * (tf.math.log(mean_stabilized) + max_pnl)
         return loss_fn
 
-    def build_and_compile_model(self, lr=0.005, loss_type='cvar', gru_layers=2, hidden_size=64, optimizer='adam', gamma=1.0):
+    def build_and_compile_model(self, lr=0.005, loss_type='cvar', gru_layers=2, hidden_size=64, optimizer='adam', gamma=1.0, proportion=0.05):
         self.model = self.deep_hedger(self.N, self.n_feats, gru_layers, hidden_size)
 
         optimizers = {
@@ -124,7 +124,7 @@ class DeepHedgerTF:
             raise ValueError(f"Unsupported optimizer: {optimizer}")
 
         loss_funcs = {
-            'cvar': self.cvarLoss(self.price, self.K_strike, batch_size=256),
+            'cvar': self.cvarLoss(self.price, self.K_strike, batch_size=256, proportion=proportion),
             'mshe': self.MSHE_Loss(self.price, self.K_strike),
             'entropic': self.entropicLoss(self.price, self.K_strike, gamma=gamma)
         }
@@ -176,17 +176,20 @@ class DeepHedgerTF:
         self.deep_terminal_error = err
         return err
 
-    def plot_error(self):
+    def plot_error(self, loss_type=None, proportion=None):
         if hasattr(self, 'deep_terminal_error'):
             plt.figure(figsize=(6, 5))
             sns.histplot(self.deep_terminal_error, bins=50)
-            plt.title("Deep-Hedger Hedging Error")
+            if proportion is not None:
+                plt.title(f"Deep-Hedger Hedging Error ({loss_type} {proportion*100:.0f}%)")
+            else:
+                plt.title(f"Deep-Hedger Hedging Error ({loss_type})")
             plt.xlabel("Hedging Error")
             plt.ylabel("Frequency")
             plt.grid(True)
             plt.show()
 
-    def plot_pnl(self):
+    def plot_pnl(self, loss_type=None):
         if hasattr(self, 'deep_terminal_pnl'):
             plt.figure(figsize=(6, 5))
             sns.histplot(self.deep_terminal_pnl, bins=50)

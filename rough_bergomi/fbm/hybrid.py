@@ -49,5 +49,5 @@ class HybridFBM(FBMSimulator):
     def generate_fBM(self):
         dW = self.dW1()
         fBm = self.Y(dW)
-        return fBm[0]
+        return fBm[0], dW
 

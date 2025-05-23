@@ -53,4 +53,4 @@ class DaviesHarteFBM(FBMSimulator):
         # Prepend the initial zero to the fBM path.
         fBm = np.insert(fBm, 0, 0.0)  # Inserts 0 at the start, making it shape (n+1,)
 
-        return fBm
+        return fBm, None
